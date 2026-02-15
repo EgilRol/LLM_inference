@@ -1,0 +1,10 @@
+.vscode/
+.clang-format
+
+*.out
+*.log
+
+bin/
+build/
+assets/
+gold/
