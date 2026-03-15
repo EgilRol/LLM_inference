@@ -8,6 +8,7 @@ bin/
 build/
 assets/
 gold/
+data/
 
 !assets/*/token.model
 !assets/*/tokenizer.model

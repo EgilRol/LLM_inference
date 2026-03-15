@@ -1,0 +1,5 @@
+/n/home11/erolstad/projects/LLM_inference/tools/.venv/lib/python3.10/site-packages/huggingface_hub/utils/_validators.py:190: UserWarning: The `resume_download` argument is deprecated and ignored in `snapshot_download`. Downloads always resume whenever possible.
+  warnings.warn(
+/n/home11/erolstad/projects/LLM_inference/tools/.venv/lib/python3.10/site-packages/huggingface_hub/utils/_validators.py:206: UserWarning: The `local_dir_use_symlinks` argument is deprecated and ignored in `snapshot_download`. Downloading to a local directory does not use symlinks anymore.
+  warnings.warn(
+Fetching 10 files:   0%|          | 0/10 [00:00<?, ?it/s]Fetching 10 files:  10%|█         | 1/10 [00:00<00:02,  4.02it/s]Fetching 10 files:  20%|██        | 2/10 [00:00<00:02,  3.19it/s]Fetching 10 files:  30%|███       | 3/10 [02:04<06:37, 56.83s/it]Fetching 10 files: 100%|██████████| 10/10 [02:04<00:00, 12.47s/it]
