@@ -4,6 +4,7 @@
 // But We include a sample test here for you to see how the we do the final
 // testing We use functions in API to implement our tests
 #include "test_api.h"
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -34,6 +35,28 @@ bool test_1() {
   return true;
 }
 
+bool test_2() {
+  TestAPI api;
+  vector<float> A = {1, 2, 3, 4};
+  vector<float> B = {5, 6, 7, 8};
+  vector<float> got = api.matmul(A, B, 2, 2, 2);
+  vector<float> expected = {19, 22, 43, 50};
+
+  if (got.size() != expected.size()) {
+    std::cout << "Test failed: size mismatch. Expected " << expected.size()
+              << " but got " << got.size() << "\n";
+    return false;
+  }
+  for (int i = 0; i < (int)got.size(); i++) {
+    if (std::abs(got[i] - expected[i]) > EPSILON) {
+      std::cout << "Test failed: element " << i << " expected " << expected[i]
+                << " but got " << got[i] << "\n";
+      return false;
+    }
+  }
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   // ANSI color codes
   const char *GREEN = "\033[32m";
@@ -57,6 +80,13 @@ int main(int argc, char *argv[]) {
   if (test_id == 1) {
     try {
       ok = test_1();
+    } catch (const std::exception &e) {
+      std::cout << RED << "Test threw: " << e.what() << RESET << "\n";
+      ok = false;
+    }
+  } else if (test_id == 2) {
+    try {
+      ok = test_2();
     } catch (const std::exception &e) {
       std::cout << RED << "Test threw: " << e.what() << RESET << "\n";
       ok = false;

@@ -2,6 +2,7 @@
 #include "config.h"
 #include "embedding.h"
 #include "tokenizer.h"
+#include "kernel/kernels.cuh"
 #include <vector>
 
 vector<int> TestAPI::tokenize(string input) {
@@ -29,6 +30,5 @@ vector<float> TestAPI::get_embeddings(vector<int> token_ids) {
 
 vector<float> TestAPI::matmul(const vector<float> &A, const vector<float> &B,
                               int M, int K, int N) {
-  throw runtime_error("Not implemented: you need to implement the "
-                      "matmul function here");
+  return ::matmul(A, B, M, K, N);
 }
