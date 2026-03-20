@@ -3,8 +3,10 @@
 # DO NOT CHANGE RECIPE FOR TEST RELATED TARGETS 
 CXX := g++
 NVCC := nvcc
+INC_DIR := include
+INCLUDES := -I$(INC_DIR) -I.
 CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -MMD -MP
-NVCCFLAGS := -std=c++17 $(INCLUDES) -Wall -Xcompiler="-Wall,-Wextra"
+NVCCFLAGS := -std=c++17 $(INCLUDES) -Xcompiler="-Wall,-Wextra"
 LDFLAGS := -lcudart
 BUILD ?= release
 
@@ -20,14 +22,12 @@ else
 endif
 
 SRC_DIR := src
-INC_DIR := include
 BUILD_DIR := build
 BIN_DIR := bin
 TARGET := llm
 SOURCES := main.cpp $(SRC_DIR)/tokenizer_bpe.cpp $(SRC_DIR)/embedding.cpp $(SRC_DIR)/data_loader.cpp
 OBJECTS := $(BUILD_DIR)/main.o $(BUILD_DIR)/tokenizer_bpe.o $(BUILD_DIR)/embedding.o $(BUILD_DIR)/data_loader.o $(BUILD_DIR)/kernels.o
 DEPS := $(OBJECTS:.o=.d)
-INCLUDES := -I$(INC_DIR) -I.
 
 all: $(BIN_DIR)/$(TARGET)
 $(BIN_DIR)/$(TARGET): $(OBJECTS) | $(BIN_DIR)
@@ -41,7 +41,7 @@ $(BUILD_DIR)/embedding.o: $(SRC_DIR)/embedding.cpp | $(BUILD_DIR)
 $(BUILD_DIR)/data_loader.o: $(SRC_DIR)/data_loader.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 $(BUILD_DIR)/kernels.o: kernel/kernels.cu | $(BUILD_DIR)
-	$(NVCC) $(NVCCFLAGS) -MMD -MP -MF $(BUILD_DIR)/kernels.d -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -MMD -MP -MF $(BUILD_DIR)/kernels.d -c $< -o $@
 $(BUILD_DIR) $(BIN_DIR):
 	mkdir -p $@
 

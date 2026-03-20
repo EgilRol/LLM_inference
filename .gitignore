@@ -9,6 +9,7 @@ build/
 assets/
 gold/
 data/
+tests/data/
 
 !assets/*/token.model
 !assets/*/tokenizer.model
