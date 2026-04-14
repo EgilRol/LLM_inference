@@ -7,7 +7,7 @@
 
 const std::string TOKENIZER_PATH = "assets/llama3/token.model";
 const std::string WEIGHTS_DIR_PATH =
-    "/n/netscratch/koumoutsakos_lab/Lab/erolstad/llama3";
+    "/shared/home/egr776/project/LLM_inference/data";
 const std::string EMBED_WEIGHTS_PATH = WEIGHTS_DIR_PATH + "/embed_tokens.bin";
 
 const int EMBEDDING_DIM = 4096;

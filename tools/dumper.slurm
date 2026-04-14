@@ -5,6 +5,6 @@
 #SBATCH --time=2:00:00
 #SBATCH --mem=20G
 #SBATCH --cpus-per-task=16
-#SBATCH --partition=seas_compute
+#SBATCH --partition=general
 
 uv run python dumper.py
