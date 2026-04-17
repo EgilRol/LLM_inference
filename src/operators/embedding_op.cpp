@@ -2,7 +2,7 @@
 
 #include "kernel/kernels.cuh"
 
-EmbeddingOp::EmbeddingOp(runtime::DeviceTensorView<const float> embedding_table)
+EmbeddingOp::EmbeddingOp(runtime::DeviceTensorView<const __nv_bfloat16> embedding_table)
     : embedding_table_(std::move(embedding_table)) {
   if (embedding_table_.data == nullptr)
     throw runtime_error("EmbeddingOp: embedding table data pointer is null");
@@ -11,7 +11,7 @@ EmbeddingOp::EmbeddingOp(runtime::DeviceTensorView<const float> embedding_table)
 }
 
 void EmbeddingOp::forward(const runtime::CudaContext& context, const vector<int>& token_ids,
-                          runtime::DeviceTensorView<float> output) {
+                          runtime::DeviceTensorView<float> output) const {
   if (output.data == nullptr)
     throw runtime_error("EmbeddingOp: output data pointer is null");
   if (output.shape.size() != 2)
@@ -34,7 +34,7 @@ void EmbeddingOp::forward(const runtime::CudaContext& context, const vector<int>
       embedding_table_, output);
 }
 
-runtime::DeviceTensorView<const float> EmbeddingOp::embedding_table() const {
+runtime::DeviceTensorView<const __nv_bfloat16> EmbeddingOp::embedding_table() const {
   return embedding_table_;
 }
 

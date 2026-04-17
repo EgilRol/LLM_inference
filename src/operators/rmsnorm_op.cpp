@@ -22,7 +22,7 @@ void validate_rmsnorm_tensor(const runtime::DeviceTensorView<float>& tensor,
 
 }  // namespace
 
-RmsNormOp::RmsNormOp(runtime::DeviceTensorView<const float> gamma, float epsilon)
+RmsNormOp::RmsNormOp(runtime::DeviceTensorView<const __nv_bfloat16> gamma, float epsilon)
     : gamma_(std::move(gamma)), epsilon_(epsilon) {
   if (gamma_.data == nullptr)
     throw runtime_error("RmsNormOp: gamma data pointer is null");
@@ -44,6 +44,6 @@ void RmsNormOp::forward(const runtime::CudaContext& context,
   launch_rmsnorm(context, input, gamma_, output, epsilon_);
 }
 
-runtime::DeviceTensorView<const float> RmsNormOp::gamma() const { return gamma_; }
+runtime::DeviceTensorView<const __nv_bfloat16> RmsNormOp::gamma() const { return gamma_; }
 
 float RmsNormOp::epsilon() const { return epsilon_; }

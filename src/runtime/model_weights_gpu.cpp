@@ -18,24 +18,21 @@ string layer_prefix(size_t layer_idx) {
 
 }  // namespace
 
-DeviceTensorView<float> OwnedTensorGPU::view() { return buffer.view(meta.shape); }
+DeviceTensorView<__nv_bfloat16> OwnedTensorGPU::view() { return buffer.view(meta.shape); }
 
-DeviceTensorView<const float> OwnedTensorGPU::view() const { return buffer.view(meta.shape); }
+DeviceTensorView<const __nv_bfloat16> OwnedTensorGPU::view() const {
+  return buffer.view(meta.shape);
+}
 
 ModelWeightsGPU::ModelWeightsGPU(const string& weights_dir, io::StagedReader& staged_reader,
                                  const CudaContext& context)
     : embed_tokens_(load_owned_tensor(join_path(weights_dir, "embed_tokens.bin"),
                                       "model.embed_tokens.weight", staged_reader, context)),
+      lm_head_(load_owned_tensor(join_path(weights_dir, "lm_head.bin"), "lm_head.weight",
+                                 staged_reader, context)),
       model_norm_(load_owned_tensor(join_path(weights_dir, "norm.bin"), "model.norm.weight",
                                     staged_reader, context)),
       layers_(kNumLayers) {
-  // Llama ties lm_head to the embedding table, so we reuse the same device storage.
-  io::WeightLoader lm_head_loader(join_path(weights_dir, "lm_head.bin"));
-  lm_head_meta_ = lm_head_loader.meta("lm_head.weight");
-  if (lm_head_meta_.shape != embed_tokens_.meta.shape) {
-    throw runtime_error("ModelWeightsGPU: lm_head shape does not match embedding table");
-  }
-
   for (size_t layer_idx = 0; layer_idx < kNumLayers; ++layer_idx) {
     const string file_path = layer_file_path(weights_dir, layer_idx);
     const string prefix = layer_prefix(layer_idx);
@@ -68,15 +65,15 @@ const LayerWeightsGPU& ModelWeightsGPU::layer(size_t layer_idx) const {
   return layers_[layer_idx];
 }
 
-DeviceTensorView<const float> ModelWeightsGPU::embed_tokens() const {
+DeviceTensorView<const __nv_bfloat16> ModelWeightsGPU::embed_tokens() const {
   return embed_tokens_.view();
 }
 
-DeviceTensorView<const float> ModelWeightsGPU::lm_head() const {
-  return embed_tokens_.buffer.view(lm_head_meta_.shape);
+DeviceTensorView<const __nv_bfloat16> ModelWeightsGPU::lm_head() const {
+  return lm_head_.view();
 }
 
-DeviceTensorView<const float> ModelWeightsGPU::model_norm() const {
+DeviceTensorView<const __nv_bfloat16> ModelWeightsGPU::model_norm() const {
   return model_norm_.view();
 }
 
@@ -87,6 +84,9 @@ OwnedTensorGPU ModelWeightsGPU::load_owned_tensor(const string& file_path,
   io::WeightLoader loader(file_path);
   OwnedTensorGPU tensor;
   tensor.meta = loader.meta(tensor_name);
+  if (tensor.meta.dtype != io::TensorDType::BF16) {
+    throw runtime_error("ModelWeightsGPU: expected BF16 tensor '" + tensor_name + "'");
+  }
   tensor.buffer.resize(tensor.meta.num_elements);
   // Startup does disk -> staging buffer -> final device allocation exactly once.
   staged_reader.upload_tensor(loader, tensor_name, tensor.buffer.data(), context.stream());

@@ -1,36 +1,15 @@
-
 #include "config.h"
-#include "tokenizer.h"
-#include <iomanip>
-#include <iostream>
+#include "model/llama_model.h"
+#include "prelude.h"
 
-using namespace std;
+#include <cstdlib>
 
-const int MAX_BATCH_SIZE = 16;
-const int MAX_SEQUENCE_SIZE = 64;
+int main(int argc, char** argv) {
+  const string prompt = argc > 1 ? argv[1] : "Hello world";
+  const size_t max_new_tokens =
+      argc > 2 ? static_cast<size_t>(std::strtoul(argv[2], nullptr, 10)) : 16;
 
-void show_tokenize(string input);
-
-int main() {
-
-
-    show_tokenize("hello world");
-
-    return 0;
-}
-
-// if you implement tokenizer_bpe you should see token ids here. 
-void show_tokenize(string input = "Hello world") {
-    BPETokenizer tok(TOKENIZER_PATH);
-
-    auto ids = tok.encode(input);
-    for (int &id : ids) {
-        cout << id << " ";
-    }
-
-    cout << "Token IDs: ";
-    for (int id : ids) {
-        cout << id << " ";
-    }
-    cout << "\n";
+  LlamaModel model(TOKENIZER_PATH, WEIGHTS_DIR_PATH);
+  cout << model.generate(prompt, max_new_tokens) << "\n";
+  return 0;
 }

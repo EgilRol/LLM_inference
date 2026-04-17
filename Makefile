@@ -34,17 +34,32 @@ CPP_SOURCES := \
 	$(SRC_DIR)/io/weight_index.cpp \
 	$(SRC_DIR)/io/weight_loader.cpp \
 	$(SRC_DIR)/io/staged_reader.cpp \
+	$(SRC_DIR)/model/decoder_block.cpp \
+	$(SRC_DIR)/model/llama_model.cpp \
+	$(SRC_DIR)/operators/argmax_op.cpp \
+	$(SRC_DIR)/operators/attention_op.cpp \
 	$(SRC_DIR)/operators/embedding_op.cpp \
+	$(SRC_DIR)/operators/ffn_op.cpp \
 	$(SRC_DIR)/operators/linear_op.cpp \
 	$(SRC_DIR)/operators/matmul_op.cpp \
+	$(SRC_DIR)/operators/qkv_projection_op.cpp \
+	$(SRC_DIR)/operators/residual_add_op.cpp \
+	$(SRC_DIR)/operators/rope_op.cpp \
 	$(SRC_DIR)/operators/rmsnorm_op.cpp \
+	$(SRC_DIR)/operators/swiglu_op.cpp \
 	$(SRC_DIR)/runtime/cuda_context.cpp \
+	$(SRC_DIR)/runtime/rope_tables.cpp \
 	$(SRC_DIR)/runtime/workspace.cpp \
 	$(SRC_DIR)/runtime/model_weights_gpu.cpp
 CUDA_SOURCES := \
+	kernel/argmax.cu \
+	kernel/attention.cu \
 	kernel/matmul.cu \
+	kernel/residual_add.cu \
 	kernel/rmsnorm.cu \
-	kernel/embedding.cu
+	kernel/embedding.cu \
+	kernel/rope.cu \
+	kernel/swiglu.cu
 CPP_OBJECTS := $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(CPP_SOURCES))
 CUDA_OBJECTS := $(patsubst %.cu,$(BUILD_DIR)/%.o,$(CUDA_SOURCES))
 OBJECTS := $(CPP_OBJECTS) $(CUDA_OBJECTS)
@@ -85,8 +100,22 @@ run: all
 
 CORE_OBJECTS := $(filter-out $(BUILD_DIR)/main.o,$(CPP_OBJECTS)) $(CUDA_OBJECTS)
 TEST_OBJECTS := $(BUILD_DIR)/tests/test.o $(BUILD_DIR)/tests/test_api.o $(CORE_OBJECTS)
+REFERENCE_OBJECTS := $(BUILD_DIR)/tests/reference_tests.o $(BUILD_DIR)/tests/reference_fixture.o $(CORE_OBJECTS)
 
 tests: $(BIN_DIR)/tests
 
 $(BIN_DIR)/tests: $(TEST_OBJECTS) | $(BIN_DIR)
 	$(CXX) $(TEST_OBJECTS) -o $@ $(LDFLAGS)
+
+.PHONY: reference_tests reference_fixtures reference_check
+
+reference_tests: $(BIN_DIR)/reference_tests
+
+$(BIN_DIR)/reference_tests: $(REFERENCE_OBJECTS) | $(BIN_DIR)
+	$(CXX) $(REFERENCE_OBJECTS) -o $@ $(LDFLAGS)
+
+reference_fixtures:
+	python3 tests/generate_reference_fixtures.py
+
+reference_check: reference_fixtures reference_tests
+	./$(BIN_DIR)/reference_tests

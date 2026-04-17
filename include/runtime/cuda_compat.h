@@ -2,6 +2,7 @@
 
 #if __has_include(<cuda_runtime.h>)
 #include <cuda_runtime.h>
+#include <cuda_bf16.h>
 #define LLM_RUNTIME_HAS_CUDA 1
 #else
 using cudaStream_t = void*;

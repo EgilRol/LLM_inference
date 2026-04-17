@@ -40,11 +40,43 @@ __global__ void matmul_kernel(const float *A, const float *B, float *C, int M, i
     C[row * N + col] = sum;
 }
 
-__global__ void transpose_kernel(const float* input, float* output, int rows, int cols) {
-  const int col = blockIdx.x * blockDim.x + threadIdx.x;
-  const int row = blockIdx.y * blockDim.y + threadIdx.y;
-  if (row < rows && col < cols)
-    output[col * rows + row] = input[row * cols + col];
+__global__ void linear_matmul_kernel(const float* input, const __nv_bfloat16* weight,
+                                     float* output, int rows, int in_dim, int out_dim) {
+  __shared__ float input_tile[TILE_SIZE][TILE_SIZE];
+  __shared__ float weight_tile[TILE_SIZE][TILE_SIZE];
+
+  const int ty = threadIdx.y;
+  const int tx = threadIdx.x;
+  const int row = blockIdx.y * TILE_SIZE + ty;
+  const int out_col = blockIdx.x * TILE_SIZE + tx;
+
+  float sum = 0.0f;
+  const int num_phases = (in_dim + TILE_SIZE - 1) / TILE_SIZE;
+  for (int phase = 0; phase < num_phases; ++phase) {
+    const int k_off = phase * TILE_SIZE;
+
+    if (row < rows && k_off + tx < in_dim)
+      input_tile[ty][tx] = input[row * in_dim + k_off + tx];
+    else
+      input_tile[ty][tx] = 0.0f;
+
+    if (out_col < out_dim && k_off + ty < in_dim) {
+      weight_tile[ty][tx] =
+          __bfloat162float(weight[out_col * in_dim + k_off + ty]);
+    } else {
+      weight_tile[ty][tx] = 0.0f;
+    }
+
+    __syncthreads();
+
+    for (int k = 0; k < TILE_SIZE; ++k)
+      sum += input_tile[ty][k] * weight_tile[k][tx];
+
+    __syncthreads();
+  }
+
+  if (row < rows && out_col < out_dim)
+    output[row * out_dim + out_col] = sum;
 }
 
 void launch_matmul(const runtime::CudaContext& context,
@@ -70,19 +102,23 @@ void launch_matmul(const runtime::CudaContext& context,
   runtime::check_last_launch("matmul_kernel launch");
 }
 
-void launch_transpose(const runtime::CudaContext& context,
-                      runtime::DeviceTensorView<const float> input,
-                      runtime::DeviceTensorView<float> output) {
-  if (input.shape.size() != 2 || output.shape.size() != 2)
-    throw runtime_error("launch_transpose: expected rank-2 tensors");
-  if (output.shape[0] != input.shape[1] || output.shape[1] != input.shape[0])
-    throw runtime_error("launch_transpose: output shape does not match transpose");
+void launch_linear_matmul(const runtime::CudaContext& context,
+                          runtime::DeviceTensorView<const float> input,
+                          runtime::DeviceTensorView<const __nv_bfloat16> weight,
+                          runtime::DeviceTensorView<float> output) {
+  if (input.shape.size() != 2 || weight.shape.size() != 2 || output.shape.size() != 2)
+    throw runtime_error("launch_linear_matmul: expected rank-2 tensors");
+  if (input.shape[1] != weight.shape[1])
+    throw runtime_error("launch_linear_matmul: input hidden dim does not match weight");
+  if (output.shape[0] != input.shape[0] || output.shape[1] != weight.shape[0])
+    throw runtime_error("launch_linear_matmul: output shape does not match");
 
+  const int rows = static_cast<int>(input.shape[0]);
+  const int in_dim = static_cast<int>(input.shape[1]);
+  const int out_dim = static_cast<int>(weight.shape[0]);
   dim3 block_dim(TILE_SIZE, TILE_SIZE);
-  dim3 grid_dim((static_cast<int>(input.shape[1]) + TILE_SIZE - 1) / TILE_SIZE,
-                (static_cast<int>(input.shape[0]) + TILE_SIZE - 1) / TILE_SIZE);
-  transpose_kernel<<<grid_dim, block_dim, 0, context.stream()>>>(
-      input.data, output.data, static_cast<int>(input.shape[0]),
-      static_cast<int>(input.shape[1]));
-  runtime::check_last_launch("transpose_kernel launch");
+  dim3 grid_dim((out_dim + TILE_SIZE - 1) / TILE_SIZE, (rows + TILE_SIZE - 1) / TILE_SIZE);
+  linear_matmul_kernel<<<grid_dim, block_dim, 0, context.stream()>>>(
+      input.data, weight.data, output.data, rows, in_dim, out_dim);
+  runtime::check_last_launch("linear_matmul_kernel launch");
 }

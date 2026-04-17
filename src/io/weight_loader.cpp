@@ -29,6 +29,9 @@ const TensorMeta& WeightLoader::meta(const string& tensor_name) const {
 
 HostTensor WeightLoader::load_tensor(const string& tensor_name) const {
   const TensorMeta& tensor_meta = meta(tensor_name);
+  if (tensor_meta.dtype != TensorDType::FP32) {
+    throw runtime_error("weight_loader: HostTensor load only supports FP32 tensors");
+  }
   HostTensor out;
   out.meta = tensor_meta;
   // The convenience path materializes one full host tensor, but only one at a time.

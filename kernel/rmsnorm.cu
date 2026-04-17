@@ -2,7 +2,7 @@
 
 #include "runtime/cuda_utils.h"
 
-__global__ void rmsnorm_kernel(const float* input, const float* gamma, float* output,
+__global__ void rmsnorm_kernel(const float* input, const __nv_bfloat16* gamma, float* output,
                                int rows, int cols, float epsilon) {
   __shared__ float partial_sums[RMSNORM_BLOCK_SIZE];
   __shared__ float inv_rms;
@@ -32,13 +32,13 @@ __global__ void rmsnorm_kernel(const float* input, const float* gamma, float* ou
 
   for (int col = tid; col < cols; col += blockDim.x) {
     const float value = input[row * cols + col];
-    output[row * cols + col] = value * inv_rms * gamma[col];
+    output[row * cols + col] = value * inv_rms * __bfloat162float(gamma[col]);
   }
 }
 
 void launch_rmsnorm(const runtime::CudaContext& context,
                     runtime::DeviceTensorView<const float> input,
-                    runtime::DeviceTensorView<const float> gamma,
+                    runtime::DeviceTensorView<const __nv_bfloat16> gamma,
                     runtime::DeviceTensorView<float> output, float epsilon) {
   if (input.shape.size() != 2 || output.shape.size() != 2)
     throw runtime_error("launch_rmsnorm: expected rank-2 input/output tensors");

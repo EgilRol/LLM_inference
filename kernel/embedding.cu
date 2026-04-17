@@ -2,7 +2,8 @@
 
 #include "runtime/cuda_utils.h"
 
-__global__ void embedding_gather_kernel(const int* token_ids, const float* embedding_table,
+__global__ void embedding_gather_kernel(const int* token_ids,
+                                        const __nv_bfloat16* embedding_table,
                                         float* output, int num_tokens, int hidden_dim) {
   const int flat_idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int total = num_tokens * hidden_dim;
@@ -12,12 +13,12 @@ __global__ void embedding_gather_kernel(const int* token_ids, const float* embed
   const int token_pos = flat_idx / hidden_dim;
   const int hidden_idx = flat_idx % hidden_dim;
   const int token_id = token_ids[token_pos];
-  output[flat_idx] = embedding_table[token_id * hidden_dim + hidden_idx];
+  output[flat_idx] = __bfloat162float(embedding_table[token_id * hidden_dim + hidden_idx]);
 }
 
 void launch_embedding_gather(const runtime::CudaContext& context,
                              runtime::DeviceTensorView<const int> token_ids,
-                             runtime::DeviceTensorView<const float> embedding_table,
+                             runtime::DeviceTensorView<const __nv_bfloat16> embedding_table,
                              runtime::DeviceTensorView<float> output) {
   if (token_ids.shape.size() != 1)
     throw runtime_error("launch_embedding_gather: token ids must be rank-1");

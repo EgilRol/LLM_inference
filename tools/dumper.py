@@ -1,14 +1,15 @@
 # Dump LLaMA weights to binary files with a header for C++ loading.
 #
-# Binary format. All tensors are float32.
+# Binary format.
 #   magic[4]     = "LLW\x01"
 #   num_tensors  = uint32
 #   for each tensor:
 #     name_len   = uint32
 #     name       = uint8[name_len] (UTF-8)
+#     dtype      = uint32
 #     ndim       = uint32
 #     shape      = uint32[ndim]
-#   then raw tensor data in same order, row-major, float32.
+#   then raw tensor data in same order, row-major.
 import json
 import os
 import struct
@@ -23,6 +24,7 @@ CONFIG_PATH = os.path.join(ASSET_DIR, "config.json")
 INDEX_PATH = os.path.join(ASSET_DIR, "model.safetensors.index.json")
 OUT_DIR = os.path.join(TOOLS_DIR, "..", "data")
 MAGIC = b"LLW\x01"
+DTYPE_BF16 = 1
 
 
 def param_to_out_key(param_name: str, num_layers: int) -> str | None:
@@ -46,13 +48,18 @@ def param_to_out_key(param_name: str, num_layers: int) -> str | None:
 
 
 def _tensor_bytes(tensor) -> bytes:
-    """Convert tensor to float32 and return raw bytes (4 bytes per element)."""
-    t = tensor.detach().float().contiguous()
-    return t.numpy().tobytes()
+    """Return raw BF16 bytes (2 bytes per element)."""
+    t = tensor.detach()
+    if t.dtype != torch.bfloat16:
+        t = t.to(torch.bfloat16)
+    # NumPy does not reliably support torch.bfloat16, so reinterpret the payload
+    # as raw 16-bit words before exporting the bytes.
+    t_bits = t.contiguous().view(torch.uint16)
+    return t_bits.numpy().tobytes()
 
 
 def write_bin(out_path: str, entries: list) -> None:
-    """Write one .bin file: header (magic, num_tensors, per-tensor metadata) then raw float32 data."""
+    """Write one .bin file: header then raw BF16 data."""
     with open(out_path, "wb") as out:
         out.write(MAGIC)
         out.write(struct.pack("<I", len(entries)))
@@ -61,6 +68,7 @@ def write_bin(out_path: str, entries: list) -> None:
             name_bytes = name.encode("utf-8")
             out.write(struct.pack("<I", len(name_bytes)))
             out.write(name_bytes)
+            out.write(struct.pack("<I", DTYPE_BF16))
             shape = tensor.shape
             out.write(struct.pack("<I", len(shape)))
             for d in shape:

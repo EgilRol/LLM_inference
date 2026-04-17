@@ -8,6 +8,7 @@ namespace io {
 
 enum class TensorDType : uint32_t {
   FP32 = 0,
+  BF16 = 1,
 };
 
 struct TensorMeta {
@@ -24,5 +25,6 @@ struct TensorMeta {
 };
 
 size_t num_elements_from_shape(const vector<size_t>& shape);
+size_t tensor_dtype_size(TensorDType dtype);
 
 }  // namespace io

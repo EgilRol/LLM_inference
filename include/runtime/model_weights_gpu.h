@@ -9,10 +9,10 @@ namespace runtime {
 struct OwnedTensorGPU {
   io::TensorMeta meta;
   // Persistent GPU allocation for one model weight tensor.
-  DeviceBuffer<float> buffer;
+  DeviceBuffer<__nv_bfloat16> buffer;
 
-  DeviceTensorView<float> view();
-  DeviceTensorView<const float> view() const;
+  DeviceTensorView<__nv_bfloat16> view();
+  DeviceTensorView<const __nv_bfloat16> view() const;
 };
 
 struct LayerWeightsGPU {
@@ -36,9 +36,9 @@ class ModelWeightsGPU {
   static constexpr size_t kNumLayers = 32;
 
   const LayerWeightsGPU& layer(size_t layer_idx) const;
-  DeviceTensorView<const float> embed_tokens() const;
-  DeviceTensorView<const float> lm_head() const;
-  DeviceTensorView<const float> model_norm() const;
+  DeviceTensorView<const __nv_bfloat16> embed_tokens() const;
+  DeviceTensorView<const __nv_bfloat16> lm_head() const;
+  DeviceTensorView<const __nv_bfloat16> model_norm() const;
 
  private:
   static OwnedTensorGPU load_owned_tensor(const string& file_path, const string& tensor_name,
@@ -47,7 +47,7 @@ class ModelWeightsGPU {
   static string layer_file_path(const string& weights_dir, size_t layer_idx);
 
   OwnedTensorGPU embed_tokens_;
-  io::TensorMeta lm_head_meta_;
+  OwnedTensorGPU lm_head_;
   OwnedTensorGPU model_norm_;
   vector<LayerWeightsGPU> layers_;
 };

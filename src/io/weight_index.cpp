@@ -23,6 +23,19 @@ uint32_t read_u32(std::ifstream& f, const string& what) {
   return value;
 }
 
+io::TensorDType read_dtype(std::ifstream& f) {
+  const uint32_t raw_dtype = read_u32(f, "dtype");
+  switch (raw_dtype) {
+    case static_cast<uint32_t>(TensorDType::FP32):
+      return TensorDType::FP32;
+    case static_cast<uint32_t>(TensorDType::BF16):
+      return TensorDType::BF16;
+    default:
+      throw runtime_error("weight_index: unsupported tensor dtype " +
+                          std::to_string(raw_dtype));
+  }
+}
+
 size_t checked_multiply(size_t a, size_t b, const string& what) {
   if (a == 0 || b == 0)
     return 0;
@@ -38,6 +51,16 @@ size_t num_elements_from_shape(const vector<size_t>& shape) {
   for (size_t dim : shape)
     num_elements = checked_multiply(num_elements, dim, "tensor element count");
   return num_elements;
+}
+
+size_t tensor_dtype_size(TensorDType dtype) {
+  switch (dtype) {
+    case TensorDType::FP32:
+      return sizeof(float);
+    case TensorDType::BF16:
+      return sizeof(uint16_t);
+  }
+  throw runtime_error("weight_index: unknown tensor dtype");
 }
 
 WeightIndex::WeightIndex(string file_path) : file_path_(std::move(file_path)) {
@@ -61,6 +84,7 @@ WeightIndex::WeightIndex(string file_path) : file_path_(std::move(file_path)) {
     const uint32_t name_len = read_u32(f, "name_len");
     string name(static_cast<size_t>(name_len), '\0');
     read_exact(f, name.data(), static_cast<size_t>(name_len), "tensor name");
+    const TensorDType dtype = read_dtype(f);
 
     const uint32_t ndim = read_u32(f, "ndim");
     vector<size_t> shape(static_cast<size_t>(ndim));
@@ -71,10 +95,10 @@ WeightIndex::WeightIndex(string file_path) : file_path_(std::move(file_path)) {
     TensorMeta meta;
     meta.name = std::move(name);
     meta.shape = std::move(shape);
-    meta.dtype = TensorDType::FP32;
+    meta.dtype = dtype;
     meta.num_elements = num_elements_from_shape(meta.shape);
-    meta.num_bytes =
-        checked_multiply(meta.num_elements, sizeof(float), "tensor byte size");
+    meta.num_bytes = checked_multiply(meta.num_elements, tensor_dtype_size(meta.dtype),
+                                      "tensor byte size");
     ordered_entries.push_back(std::move(meta));
   }
 
